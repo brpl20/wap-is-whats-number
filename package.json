@@ -1,0 +1,32 @@
+{
+  "name": "wap-is-whats-number",
+  "version": "1.0.0",
+  "description": "API service to check if phone numbers are registered on WhatsApp",
+  "main": "wap-is-whats-number.js",
+  "scripts": {
+    "start": "node wap-is-whats-number.js",
+    "test": "node test-whatsapp-api.js",
+    "dev": "nodemon wap-is-whats-number.js"
+  },
+  "dependencies": {
+    "express": "^4.21.2",
+    "express-rate-limit": "^7.5.1",
+    "qrcode-terminal": "^0.12.0",
+    "whatsapp-web.js": "^1.23.0"
+  },
+  "devDependencies": {
+    "axios": "^1.6.2",
+    "nodemon": "^3.0.1"
+  },
+  "engines": {
+    "node": ">=14.0.0"
+  },
+  "keywords": [
+    "whatsapp",
+    "validation",
+    "api",
+    "phone-number"
+  ],
+  "author": "",
+  "license": "ISC"
+}
