@@ -16,7 +16,7 @@ app.use((req, res, next) => {
   res.on("finish", () => {
     const duration = Date.now() - start;
     console.log(
-      `[${new Date().toISOString()}] ${req.method} ${req.url} ${res.statusCode} - ${duration}ms`
+      `[${new Date().toISOString()}] ${req.method} ${req.url} ${res.statusCode} - ${duration}ms`,
     );
   });
   next();
@@ -27,7 +27,7 @@ app.use((req, res, next) => {
   res.header("Access-Control-Allow-Origin", "*");
   res.header(
     "Access-Control-Allow-Headers",
-    "Origin, X-Requested-With, Content-Type, Accept, Authorization"
+    "Origin, X-Requested-With, Content-Type, Accept, Authorization",
   );
   if (req.method === "OPTIONS") {
     res.header("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE");
@@ -63,12 +63,13 @@ const config = {
     "--disable-features=AudioServiceOutOfProcess",
     "--single-process",
   ],
-  chromeExecutablePath: process.env.CHROME_PATH ||
+  chromeExecutablePath:
+    process.env.CHROME_PATH ||
     (process.platform === "darwin"
       ? "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome"
       : process.platform === "win32"
-      ? "C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe"
-      : "/usr/bin/google-chrome-stable"),
+        ? "C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe"
+        : "/usr/bin/google-chrome-stable"),
   defaultCountryCode: process.env.DEFAULT_COUNTRY_CODE || "55",
   maxBatchSize: parseInt(process.env.MAX_BATCH_SIZE || "20", 10),
   operationTimeout: parseInt(process.env.OPERATION_TIMEOUT || "30000", 10),
@@ -97,61 +98,68 @@ let client = null;
 
 if (config.enableWhatsapp) {
   client = new Client({
-  authStrategy: new LocalAuth({
-    dataPath: dataDir,
-  }),
-  puppeteer: {
-    headless: true,
-    executablePath: config.chromeExecutablePath,
-    args: config.puppeteerArgs,
-    timeout: config.operationTimeout,
-    ignoreHTTPSErrors: true,
-    defaultViewport: {
-      width: 1280,
-      height: 720,
+    authStrategy: new LocalAuth({
+      dataPath: dataDir,
+    }),
+    puppeteer: {
+      headless: true,
+      executablePath: config.chromeExecutablePath,
+      args: config.puppeteerArgs,
+      timeout: config.operationTimeout,
+      ignoreHTTPSErrors: true,
+      defaultViewport: {
+        width: 1280,
+        height: 720,
+      },
     },
-  },
-  webVersionCache: {
-    type: 'remote',
-  },
-  userAgent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/96.0.4664.110 Safari/537.36',
-  takeoverOnConflict: true,
-  restartOnAuthFail: true,
-});
-
-// Set up client event listeners if WhatsApp is enabled
-if (client) {
-  client.on("qr", (qr) => {
-  console.log("QR RECEIVED. Scan this with your WhatsApp app:");
-  qrcode.generate(qr, { small: true });
-  // Also save the QR code to a file for server-based access
-  fs.writeFileSync(path.join(__dirname, "last_qr.txt"), qr);
-});
-
-  client.on("ready", () => {
-  console.log("WhatsApp client is ready!");
-  console.log(`Client info: ${client.info.pushname} (${client.info.wid.user})`);
-});
-
-  client.on("authenticated", () => {
-  console.log("WhatsApp client authenticated");
-});
-
-  client.on("auth_failure", (msg) => {
-  console.error("WhatsApp authentication failed:", msg);
-});
-
-  client.on("disconnected", (reason) => {
-    console.log("WhatsApp client was disconnected:", reason);
-    console.log("Attempting to reconnect...");
-    client.initialize().catch((err) => {
-      console.error("Failed to reinitialize after disconnect:", err);
-    });
+    webVersionCache: {
+      type: "remote",
+    },
+    userAgent:
+      "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/96.0.4664.110 Safari/537.36",
+    takeoverOnConflict: true,
+    restartOnAuthFail: true,
   });
+
+  // Set up client event listeners if WhatsApp is enabled
+  if (client) {
+    client.on("qr", (qr) => {
+      console.log("QR RECEIVED. Scan this with your WhatsApp app:");
+      qrcode.generate(qr, { small: true });
+      // Also save the QR code to a file for server-based access
+      fs.writeFileSync(path.join(__dirname, "last_qr.txt"), qr);
+    });
+
+    client.on("ready", () => {
+      console.log("WhatsApp client is ready!");
+      console.log(
+        `Client info: ${client.info.pushname} (${client.info.wid.user})`,
+      );
+    });
+
+    client.on("authenticated", () => {
+      console.log("WhatsApp client authenticated");
+    });
+
+    client.on("auth_failure", (msg) => {
+      console.error("WhatsApp authentication failed:", msg);
+    });
+
+    client.on("disconnected", (reason) => {
+      console.log("WhatsApp client was disconnected:", reason);
+      console.log("Attempting to reconnect...");
+      client.initialize().catch((err) => {
+        console.error("Failed to reinitialize after disconnect:", err);
+      });
+    });
+  }
 }
 
 // Utility function to format phone numbers to WhatsApp format
-function formatPhoneForWhatsApp(phoneNumber, countryCode = config.defaultCountryCode) {
+function formatPhoneForWhatsApp(
+  phoneNumber,
+  countryCode = config.defaultCountryCode,
+) {
   // Remove any non-digit characters
   let cleaned = phoneNumber.replace(/\D/g, "");
 
@@ -175,7 +183,10 @@ function formatPhoneForWhatsApp(phoneNumber, countryCode = config.defaultCountry
 }
 
 // Core function to check if a number is registered on WhatsApp
-async function checkWhatsAppContact(phoneNumber, countryCode = config.defaultCountryCode) {
+async function checkWhatsAppContact(
+  phoneNumber,
+  countryCode = config.defaultCountryCode,
+) {
   try {
     const formattedNumber = formatPhoneForWhatsApp(phoneNumber, countryCode);
     const id = `${formattedNumber}@c.us`;
@@ -191,10 +202,12 @@ async function checkWhatsAppContact(phoneNumber, countryCode = config.defaultCou
       formattedPhoneNumber: formattedNumber,
       whatsappId: id,
       exists: isRegistered,
-      contact: contact ? {
-        name: contact.name || contact.pushname || null,
-        shortName: contact.shortName || null,
-      } : null,
+      contact: contact
+        ? {
+            name: contact.name || contact.pushname || null,
+            shortName: contact.shortName || null,
+          }
+        : null,
     };
   } catch (error) {
     throw new Error(`Failed to check WhatsApp contact: ${error.message}`);
@@ -231,98 +244,108 @@ function checkWhatsAppEnabled(req, res, next) {
 const whatsappRouter = express.Router();
 
 // Check a single phone number
-whatsappRouter.post("/check", checkWhatsAppEnabled, ensureClientReady, async (req, res) => {
-  try {
-    const { phoneNumber, countryCode } = req.body;
+whatsappRouter.post(
+  "/check",
+  checkWhatsAppEnabled,
+  ensureClientReady,
+  async (req, res) => {
+    try {
+      const { phoneNumber, countryCode } = req.body;
 
-    if (!phoneNumber) {
-      return res.status(400).json({
-        success: false,
-        error: "Phone number is required",
-      });
-    }
-
-    const result = await checkWhatsAppContact(
-      phoneNumber,
-      countryCode || config.defaultCountryCode
-    );
-
-    res.json({
-      success: true,
-      result,
-    });
-  } catch (error) {
-    console.error("Error checking phone number:", error);
-    res.status(500).json({
-      success: false,
-      error: error.message,
-    });
-  }
-});
-
-// Check multiple phone numbers in batch
-whatsappRouter.post("/check-batch", checkWhatsAppEnabled, ensureClientReady, async (req, res) => {
-  try {
-    const { phoneNumbers, countryCode } = req.body;
-
-    if (!phoneNumbers || !Array.isArray(phoneNumbers)) {
-      return res.status(400).json({
-        success: false,
-        error: "phoneNumbers array is required",
-      });
-    }
-
-    if (phoneNumbers.length === 0) {
-      return res.status(400).json({
-        success: false,
-        error: "phoneNumbers array cannot be empty",
-      });
-    }
-
-    if (phoneNumbers.length > config.maxBatchSize) {
-      return res.status(400).json({
-        success: false,
-        error: `Batch size exceeds maximum limit of ${config.maxBatchSize}`,
-      });
-    }
-
-    const results = [];
-    let errors = 0;
-
-    // Process each phone number
-    for (const phone of phoneNumbers) {
-      try {
-        const result = await checkWhatsAppContact(
-          phone,
-          countryCode || config.defaultCountryCode
-        );
-        results.push(result);
-      } catch (error) {
-        console.error(`Error checking phone ${phone}:`, error);
-        errors++;
-        results.push({
-          inputPhoneNumber: phone,
-          error: error.message,
-          exists: false,
+      if (!phoneNumber) {
+        return res.status(400).json({
+          success: false,
+          error: "Phone number is required",
         });
       }
-    }
 
-    res.json({
-      success: true,
-      total: phoneNumbers.length,
-      processed: results.length,
-      errors,
-      results,
-    });
-  } catch (error) {
-    console.error("Error in batch check:", error);
-    res.status(500).json({
-      success: false,
-      error: error.message,
-    });
-  }
-});
+      const result = await checkWhatsAppContact(
+        phoneNumber,
+        countryCode || config.defaultCountryCode,
+      );
+
+      res.json({
+        success: true,
+        result,
+      });
+    } catch (error) {
+      console.error("Error checking phone number:", error);
+      res.status(500).json({
+        success: false,
+        error: error.message,
+      });
+    }
+  },
+);
+
+// Check multiple phone numbers in batch
+whatsappRouter.post(
+  "/check-batch",
+  checkWhatsAppEnabled,
+  ensureClientReady,
+  async (req, res) => {
+    try {
+      const { phoneNumbers, countryCode } = req.body;
+
+      if (!phoneNumbers || !Array.isArray(phoneNumbers)) {
+        return res.status(400).json({
+          success: false,
+          error: "phoneNumbers array is required",
+        });
+      }
+
+      if (phoneNumbers.length === 0) {
+        return res.status(400).json({
+          success: false,
+          error: "phoneNumbers array cannot be empty",
+        });
+      }
+
+      if (phoneNumbers.length > config.maxBatchSize) {
+        return res.status(400).json({
+          success: false,
+          error: `Batch size exceeds maximum limit of ${config.maxBatchSize}`,
+        });
+      }
+
+      const results = [];
+      let errors = 0;
+
+      // Process each phone number
+      for (const phone of phoneNumbers) {
+        try {
+          const result = await checkWhatsAppContact(
+            phone,
+            countryCode || config.defaultCountryCode,
+          );
+          results.push(result);
+        } catch (error) {
+          console.error(`Error checking phone ${phone}:`, error);
+          errors++;
+          results.push({
+            inputPhoneNumber: phone,
+            error: error.message,
+            exists: false,
+          });
+        }
+      }
+
+      res.json({
+        success: true,
+        total: phoneNumbers.length,
+        processed: results.length,
+        errors,
+        results,
+      });
+    } catch (error) {
+      console.error("Error in batch check:", error);
+      res.status(500).json({
+        success: false,
+        error: error.message,
+      });
+    }
+  },
+);
 
 // Check server and client status
 whatsappRouter.get("/status", checkWhatsAppEnabled, async (req, res) => {
@@ -370,13 +393,13 @@ const cepRouter = express.Router();
 function validateCEP(cep) {
   return new Promise((resolve, reject) => {
     // Basic format validation
-    const cleanCep = cep.replace(/[^0-9]/g, '');
+    const cleanCep = cep.replace(/[^0-9]/g, "");
 
     if (cleanCep.length !== 8) {
       return resolve({
         isValid: false,
-        message: 'CEP must have 8 digits',
-        cep: cleanCep
+        message: "CEP must have 8 digits",
+        cep: cleanCep,
       });
     }
 
@@ -385,58 +408,58 @@ function validateCEP(cep) {
 
     https
       .get(url, (response) => {
-        let data = '';
+        let data = "";
 
         // A chunk of data has been received
-        response.on('data', (chunk) => {
+        response.on("data", (chunk) => {
           data += chunk;
         });
 
         // The whole response has been received
-        response.on('end', () => {
+        response.on("end", () => {
           try {
             const result = JSON.parse(data);
 
             if (result.erro) {
               resolve({
                 isValid: false,
-                message: 'Invalid CEP',
-                cep: cleanCep
+                message: "Invalid CEP",
+                cep: cleanCep,
               });
             } else {
               resolve({
                 isValid: true,
-                message: 'Valid CEP',
+                message: "Valid CEP",
                 cep: cleanCep,
-                data: result
+                data: result,
               });
             }
           } catch (error) {
             reject({
               isValid: false,
-              message: 'Error processing response',
-              error: error.message
+              message: "Error processing response",
+              error: error.message,
             });
           }
         });
       })
-      .on('error', (error) => {
+      .on("error", (error) => {
         reject({
           isValid: false,
-          message: 'Error calling ViaCEP API',
-          error: error.message
+          message: "Error calling ViaCEP API",
+          error: error.message,
         });
       });
   });
 }
 
 // Health check endpoint
-cepRouter.get('/', (req, res) => {
-  res.json({ message: 'CEP Validator API is running' });
+cepRouter.get("/", (req, res) => {
+  res.json({ message: "CEP Validator API is running" });
 });
 
 // CEP validation endpoint - GET method
-cepRouter.get('/validate-cep/:cep', async (req, res) => {
+cepRouter.get("/validate-cep/:cep", async (req, res) => {
   try {
     const cepValue = req.params.cep;
     const result = await validateCEP(cepValue);
@@ -444,21 +467,21 @@ cepRouter.get('/validate-cep/:cep', async (req, res) => {
   } catch (error) {
     res.status(500).json({
       isValid: false,
-      message: 'Server error',
-      error: error.message
+      message: "Server error",
+      error: error.message,
     });
   }
 });
 
 // CEP validation endpoint - POST method
-cepRouter.post('/validate-cep', async (req, res) => {
+cepRouter.post("/validate-cep", async (req, res) => {
   try {
     const { cep } = req.body;
 
     if (!cep) {
       return res.status(400).json({
         isValid: false,
-        message: 'CEP is required in the request body'
+        message: "CEP is required in the request body",
       });
     }
 
@@ -467,8 +490,8 @@ cepRouter.post('/validate-cep', async (req, res) => {
   } catch (error) {
     res.status(500).json({
       isValid: false,
-      message: 'Server error',
-      error: error.message
+      message: "Server error",
+      error: error.message,
     });
   }
 });
@@ -476,13 +499,13 @@ cepRouter.post('/validate-cep', async (req, res) => {
 // ========================= REGISTER ROUTERS =========================
 
 // Register the routers with their respective base paths
-app.use('/api/whatsapp', whatsappRouter);
-app.use('/api/cep', cepRouter);
+app.use("/api/whatsapp", whatsappRouter);
+app.use("/api/cep", cepRouter);
 
 // Health check endpoint
-app.get('/health', (req, res) => {
+app.get("/health", (req, res) => {
   res.json({
-    status: 'ok',
+    status: "ok",
     uptime: process.uptime(),
     timestamp: new Date().toISOString(),
   });
@@ -655,45 +678,55 @@ if (config.sslEnabled) {
 // Start the server
 server.listen(config.port, () => {
   console.log(`Unified server is running on port ${config.port}`);
-  console.log(`API documentation available at http://localhost:${config.port}/`);
+  console.log(
+    `API documentation available at http://localhost:${config.port}/`,
+  );
 
   // Delay initialization to ensure server is fully ready
   setTimeout(() => {
     if (client) {
       console.log("Starting WhatsApp Web client initialization...");
       client.initialize().catch((err) => {
-      console.error("Failed to initialize WhatsApp client:", err);
-      console.error("Stack trace:", err.stack);
+        console.error("Failed to initialize WhatsApp client:", err);
+        console.error("Stack trace:", err.stack);
 
-      // Provide helpful error messages based on common issues
-      if (err.message.includes("spawn")) {
-        console.error("\n" + "!".repeat(60));
-        console.error("CHROME SPAWN ERROR DETECTED!");
-        console.error("Possible solutions:");
-        console.error("1. Check Chrome installation path: " + config.chromeExecutablePath);
-        console.error("2. Install Chrome if not present");
-        console.error("3. Set CHROME_PATH environment variable to your Chrome executable");
-        console.error("!".repeat(60) + "\n");
-      } else if (err.message.includes("Session closed")) {
-        console.error("\n" + "!".repeat(60));
-        console.error("CHROME SESSION CLOSED UNEXPECTEDLY!");
-        console.error("Possible solutions:");
-        console.error("1. Make sure you have enough system resources (RAM, CPU)");
-        console.error("2. Check if Chrome has proper permissions");
-        console.error("3. Try updating Chrome to latest version");
-        console.error("!".repeat(60) + "\n");
-      }
+        // Provide helpful error messages based on common issues
+        if (err.message.includes("spawn")) {
+          console.error("\n" + "!".repeat(60));
+          console.error("CHROME SPAWN ERROR DETECTED!");
+          console.error("Possible solutions:");
+          console.error(
+            "1. Check Chrome installation path: " + config.chromeExecutablePath,
+          );
+          console.error("2. Install Chrome if not present");
+          console.error(
+            "3. Set CHROME_PATH environment variable to your Chrome executable",
+          );
+          console.error("!".repeat(60) + "\n");
+        } else if (err.message.includes("Session closed")) {
+          console.error("\n" + "!".repeat(60));
+          console.error("CHROME SESSION CLOSED UNEXPECTEDLY!");
+          console.error("Possible solutions:");
+          console.error(
+            "1. Make sure you have enough system resources (RAM, CPU)",
+          );
+          console.error("2. Check if Chrome has proper permissions");
+          console.error("3. Try updating Chrome to latest version");
+          console.error("!".repeat(60) + "\n");
+        }
 
-      // Don't exit immediately, allow the server to continue running
-      console.log(
-        "WhatsApp client initialization failed, but server continues running.",
-      );
-      console.log(
-        "You can try restarting the application or accessing /api/whatsapp/status to check server health.",
-      );
+        // Don't exit immediately, allow the server to continue running
+        console.log(
+          "WhatsApp client initialization failed, but server continues running.",
+        );
+        console.log(
+          "You can try restarting the application or accessing /api/whatsapp/status to check server health.",
+        );
       });
     } else {
-      console.log("WhatsApp client initialization skipped (disabled by configuration)");
+      console.log(
+        "WhatsApp client initialization skipped (disabled by configuration)",
+      );
     }
   }, 3000);
 });
