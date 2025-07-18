@@ -1,2 +1,3 @@
-2025/07/08-11:38:21.505 b503 Creating DB /Volumes/BPSSD/codessd/wap-is-whats-number/.wwebjs_auth/session/Default/Session Storage since it was missing.
-2025/07/08-11:38:21.511 b503 Reusing MANIFEST /Volumes/BPSSD/codessd/wap-is-whats-number/.wwebjs_auth/session/Default/Session Storage/MANIFEST-000001
+2025/07/18-11:25:41.074 28390f Reusing MANIFEST /Users/brpl/code/wap-is-whats-number/.wwebjs_auth/session/Default/Session Storage/MANIFEST-000001
+2025/07/18-11:25:41.075 28390f Recovering log #3
+2025/07/18-11:25:41.075 28390f Reusing old log /Users/brpl/code/wap-is-whats-number/.wwebjs_auth/session/Default/Session Storage/000003.log 

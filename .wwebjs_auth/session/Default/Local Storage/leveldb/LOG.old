@@ -1,2 +1,3 @@
-2025/07/08-11:38:19.526 b503 Creating DB /Volumes/BPSSD/codessd/wap-is-whats-number/.wwebjs_auth/session/Default/Local Storage/leveldb since it was missing.
-2025/07/08-11:38:19.542 b503 Reusing MANIFEST /Volumes/BPSSD/codessd/wap-is-whats-number/.wwebjs_auth/session/Default/Local Storage/leveldb/MANIFEST-000001
+2025/07/18-11:25:41.033 28390f Reusing MANIFEST /Users/brpl/code/wap-is-whats-number/.wwebjs_auth/session/Default/Local Storage/leveldb/MANIFEST-000001
+2025/07/18-11:25:41.038 28390f Recovering log #3
+2025/07/18-11:25:41.038 28390f Reusing old log /Users/brpl/code/wap-is-whats-number/.wwebjs_auth/session/Default/Local Storage/leveldb/000003.log 
