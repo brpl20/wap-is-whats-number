@@ -55,16 +55,24 @@ const config = {
     "--disable-backgrounding-occluded-windows",
     "--disable-renderer-backgrounding",
     "--window-size=1280,720",
+    "--disable-features=site-per-process",
+    "--disable-web-security",
+    "--disable-crash-reporter",
+    "--hide-scrollbars",
+    "--mute-audio",
+    "--disable-features=AudioServiceOutOfProcess",
+    "--single-process",
   ],
   chromeExecutablePath: process.env.CHROME_PATH ||
     (process.platform === "darwin"
       ? "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome"
       : process.platform === "win32"
       ? "C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe"
-      : "/usr/bin/google-chrome"),
+      : "/usr/bin/google-chrome-stable"),
   defaultCountryCode: process.env.DEFAULT_COUNTRY_CODE || "55",
   maxBatchSize: parseInt(process.env.MAX_BATCH_SIZE || "20", 10),
-  operationTimeout: parseInt(process.env.OPERATION_TIMEOUT || "10000", 10),
+  operationTimeout: parseInt(process.env.OPERATION_TIMEOUT || "30000", 10),
+  enableWhatsapp: process.env.ENABLE_WHATSAPP !== "false",
 };
 
 // Create data directory for persistent storage
@@ -82,9 +90,13 @@ console.log(`- SSL Enabled: ${config.sslEnabled}`);
 console.log(`- Chrome Path: ${config.chromeExecutablePath}`);
 console.log(`- Default Country Code: ${config.defaultCountryCode}`);
 console.log(`- Max Batch Size: ${config.maxBatchSize}`);
+console.log(`- WhatsApp Enabled: ${config.enableWhatsapp}`);
 
 // Initialize the WhatsApp client with proper configuration for server environment
-const client = new Client({
+let client = null;
+
+if (config.enableWhatsapp) {
+  client = new Client({
   authStrategy: new LocalAuth({
     dataPath: dataDir,
   }),
@@ -92,43 +104,51 @@ const client = new Client({
     headless: true,
     executablePath: config.chromeExecutablePath,
     args: config.puppeteerArgs,
-    timeout: 120000,
+    timeout: config.operationTimeout,
     ignoreHTTPSErrors: true,
     defaultViewport: {
       width: 1280,
       height: 720,
     },
   },
+  webVersionCache: {
+    type: 'remote',
+  },
+  userAgent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/96.0.4664.110 Safari/537.36',
+  takeoverOnConflict: true,
+  restartOnAuthFail: true,
 });
 
-// Set up client event listeners
-client.on("qr", (qr) => {
+// Set up client event listeners if WhatsApp is enabled
+if (client) {
+  client.on("qr", (qr) => {
   console.log("QR RECEIVED. Scan this with your WhatsApp app:");
   qrcode.generate(qr, { small: true });
   // Also save the QR code to a file for server-based access
   fs.writeFileSync(path.join(__dirname, "last_qr.txt"), qr);
 });
 
-client.on("ready", () => {
+  client.on("ready", () => {
   console.log("WhatsApp client is ready!");
   console.log(`Client info: ${client.info.pushname} (${client.info.wid.user})`);
 });
 
-client.on("authenticated", () => {
+  client.on("authenticated", () => {
   console.log("WhatsApp client authenticated");
 });
 
-client.on("auth_failure", (msg) => {
+  client.on("auth_failure", (msg) => {
   console.error("WhatsApp authentication failed:", msg);
 });
 
-client.on("disconnected", (reason) => {
-  console.log("WhatsApp client was disconnected:", reason);
-  console.log("Attempting to reconnect...");
-  client.initialize().catch((err) => {
-    console.error("Failed to reinitialize after disconnect:", err);
+  client.on("disconnected", (reason) => {
+    console.log("WhatsApp client was disconnected:", reason);
+    console.log("Attempting to reconnect...");
+    client.initialize().catch((err) => {
+      console.error("Failed to reinitialize after disconnect:", err);
+    });
   });
-});
+}
 
 // Utility function to format phone numbers to WhatsApp format
 function formatPhoneForWhatsApp(phoneNumber, countryCode = config.defaultCountryCode) {
@@ -193,13 +213,25 @@ function ensureClientReady(req, res, next) {
   next();
 }
 
+// Check if WhatsApp is enabled at all
+function checkWhatsAppEnabled(req, res, next) {
+  if (!config.enableWhatsapp) {
+    return res.status(503).json({
+      success: false,
+      error: "WhatsApp functionality is currently disabled on this server.",
+      status: "disabled",
+    });
+  }
+  next();
+}
+
 // ========================= WHATSAPP API ROUTES =========================
 
 // WhatsApp API router
 const whatsappRouter = express.Router();
 
 // Check a single phone number
-whatsappRouter.post("/check", ensureClientReady, async (req, res) => {
+whatsappRouter.post("/check", checkWhatsAppEnabled, ensureClientReady, async (req, res) => {
   try {
     const { phoneNumber, countryCode } = req.body;
 
@@ -229,7 +261,7 @@ whatsappRouter.post("/check", ensureClientReady, async (req, res) => {
 });
 
 // Check multiple phone numbers in batch
-whatsappRouter.post("/check-batch", ensureClientReady, async (req, res) => {
+whatsappRouter.post("/check-batch", checkWhatsAppEnabled, ensureClientReady, async (req, res) => {
   try {
     const { phoneNumbers, countryCode } = req.body;
 
@@ -293,7 +325,7 @@ whatsappRouter.post("/check-batch", ensureClientReady, async (req, res) => {
 });
 
 // Check server and client status
-whatsappRouter.get("/status", async (req, res) => {
+whatsappRouter.get("/status", checkWhatsAppEnabled, async (req, res) => {
   try {
     const state = client.getState();
     const info = client.info || {};
@@ -627,8 +659,9 @@ server.listen(config.port, () => {
 
   // Delay initialization to ensure server is fully ready
   setTimeout(() => {
-    console.log("Starting WhatsApp Web client initialization...");
-    client.initialize().catch((err) => {
+    if (client) {
+      console.log("Starting WhatsApp Web client initialization...");
+      client.initialize().catch((err) => {
       console.error("Failed to initialize WhatsApp client:", err);
       console.error("Stack trace:", err.stack);
 
@@ -658,7 +691,10 @@ server.listen(config.port, () => {
       console.log(
         "You can try restarting the application or accessing /api/whatsapp/status to check server health.",
       );
-    });
+      });
+    } else {
+      console.log("WhatsApp client initialization skipped (disabled by configuration)");
+    }
   }, 3000);
 });
 
@@ -673,7 +709,7 @@ process.on("uncaughtException", (err) => {
 async function shutdown() {
   console.log("\nGracefully shutting down...");
   try {
-    if (client) {
+    if (client && config.enableWhatsapp) {
       console.log("Closing WhatsApp client connection...");
       await client.destroy();
     }

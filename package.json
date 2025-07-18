@@ -8,7 +8,9 @@
     "test": "node test-whatsapp-api.js",
     "dev": "nodemon server.js",
     "start:whatsapp": "node wap-is-whats-number-server.js",
-    "start:cep": "node cep-checker.js"
+    "start:cep": "node cep-checker.js",
+    "start:server": "bash start.sh",
+    "start:cep-only": "bash start.sh --no-whatsapp"
   },
   "dependencies": {
     "express": "^4.21.2",
