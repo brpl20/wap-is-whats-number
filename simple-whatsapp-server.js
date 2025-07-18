@@ -4,6 +4,7 @@ const qrcode = require("qrcode-terminal");
 const fs = require("fs");
 const path = require("path");
 const http = require("http");
+const https = require("https");
 
 // Initialize Express app
 const app = express();
@@ -12,7 +13,10 @@ app.use(express.json());
 // Enable CORS
 app.use((req, res, next) => {
   res.header("Access-Control-Allow-Origin", "*");
-  res.header("Access-Control-Allow-Headers", "Origin, X-Requested-With, Content-Type, Accept");
+  res.header(
+    "Access-Control-Allow-Headers",
+    "Origin, X-Requested-With, Content-Type, Accept",
+  );
   if (req.method === "OPTIONS") {
     res.header("Access-Control-Allow-Methods", "GET, POST");
     return res.status(200).json({});
@@ -24,7 +28,8 @@ app.use((req, res, next) => {
 const config = {
   port: process.env.PORT || 3000,
   defaultCountryCode: process.env.DEFAULT_COUNTRY_CODE || "55",
-  maxBatchSize: parseInt(process.env.MAX_BATCH_SIZE || "20", 10)
+  maxBatchSize: parseInt(process.env.MAX_BATCH_SIZE || "20", 10),
+  enableCEP: process.env.ENABLE_CEP !== "false",
 };
 
 // Initialize WhatsApp client
@@ -33,11 +38,11 @@ const client = new Client({
   puppeteer: {
     headless: true,
     args: [
-      '--no-sandbox',
-      '--disable-setuid-sandbox',
-      '--disable-dev-shm-usage'
-    ]
-  }
+      "--no-sandbox",
+      "--disable-setuid-sandbox",
+      "--disable-dev-shm-usage",
+    ],
+  },
 });
 
 // QR code handling
@@ -59,7 +64,10 @@ client.on("auth_failure", (msg) => {
 });
 
 // Utility function to format phone numbers
-function formatPhoneNumber(phoneNumber, countryCode = config.defaultCountryCode) {
+function formatPhoneNumber(
+  phoneNumber,
+  countryCode = config.defaultCountryCode,
+) {
   // Remove any non-digit characters
   let cleaned = phoneNumber.replace(/\D/g, "");
 
@@ -83,7 +91,10 @@ function formatPhoneNumber(phoneNumber, countryCode = config.defaultCountryCode)
 }
 
 // Function to check if a number is registered on WhatsApp
-async function checkWhatsAppNumber(phoneNumber, countryCode = config.defaultCountryCode) {
+async function checkWhatsAppNumber(
+  phoneNumber,
+  countryCode = config.defaultCountryCode,
+) {
   try {
     const formattedNumber = formatPhoneNumber(phoneNumber, countryCode);
     const id = `${formattedNumber}@c.us`;
@@ -94,7 +105,7 @@ async function checkWhatsAppNumber(phoneNumber, countryCode = config.defaultCoun
     return {
       inputPhoneNumber: phoneNumber,
       formattedPhoneNumber: formattedNumber,
-      exists: isRegistered
+      exists: isRegistered,
     };
   } catch (error) {
     console.error(`Error checking number ${phoneNumber}:`, error);
@@ -107,7 +118,7 @@ function ensureClientReady(req, res, next) {
   if (!client || !client.info) {
     return res.status(503).json({
       success: false,
-      error: "WhatsApp client not ready yet. Please try again later."
+      error: "WhatsApp client not ready yet. Please try again later.",
     });
   }
   next();
@@ -126,7 +137,7 @@ app.post("/api/check", ensureClientReady, async (req, res) => {
     if (!phoneNumber) {
       return res.status(400).json({
         success: false,
-        error: "Phone number is required"
+        error: "Phone number is required",
       });
     }
 
@@ -134,13 +145,13 @@ app.post("/api/check", ensureClientReady, async (req, res) => {
 
     res.json({
       success: true,
-      result
+      result,
     });
   } catch (error) {
     console.error("Error checking phone number:", error);
     res.status(500).json({
       success: false,
-      error: error.message
+      error: error.message,
     });
   }
 });
@@ -153,21 +164,21 @@ app.post("/api/check-batch", ensureClientReady, async (req, res) => {
     if (!phoneNumbers || !Array.isArray(phoneNumbers)) {
       return res.status(400).json({
         success: false,
-        error: "phoneNumbers array is required"
+        error: "phoneNumbers array is required",
       });
     }
 
     if (phoneNumbers.length === 0) {
       return res.status(400).json({
         success: false,
-        error: "phoneNumbers array cannot be empty"
+        error: "phoneNumbers array cannot be empty",
       });
     }
 
     if (phoneNumbers.length > config.maxBatchSize) {
       return res.status(400).json({
         success: false,
-        error: `Batch size exceeds maximum limit of ${config.maxBatchSize}`
+        error: `Batch size exceeds maximum limit of ${config.maxBatchSize}`,
       });
     }
 
@@ -184,7 +195,7 @@ app.post("/api/check-batch", ensureClientReady, async (req, res) => {
         results.push({
           inputPhoneNumber: phone,
           error: error.message,
-          exists: false
+          exists: false,
         });
       }
     }
@@ -194,13 +205,13 @@ app.post("/api/check-batch", ensureClientReady, async (req, res) => {
       total: phoneNumbers.length,
       processed: results.length,
       errors,
-      results
+      results,
     });
   } catch (error) {
     console.error("Error in batch check:", error);
     res.status(500).json({
       success: false,
-      error: error.message
+      error: error.message,
     });
   }
 });
@@ -212,14 +223,14 @@ app.get("/api/status", async (req, res) => {
       success: true,
       status: {
         client: client.getState() || "INITIALIZING",
-        ready: !!client.info
+        ready: !!client.info,
       },
-      timestamp: new Date().toISOString()
+      timestamp: new Date().toISOString(),
     });
   } catch (error) {
     res.status(500).json({
       success: false,
-      error: error.message
+      error: error.message,
     });
   }
 });
@@ -255,6 +266,14 @@ app.get("/", (req, res) => {
           <li><strong>POST /api/check-batch</strong> - Check multiple phone numbers (up to ${config.maxBatchSize})</li>
           <li><strong>GET /api/status</strong> - Check API status</li>
           <li><strong>GET /health</strong> - Health check</li>
+          ${
+            config.enableCEP
+              ? `
+          <li><strong>GET /api/cep/validate-cep/:cep</strong> - Validate a CEP (GET method)</li>
+          <li><strong>POST /api/cep/validate-cep</strong> - Validate a CEP (POST method)</li>
+          `
+              : ""
+          }
         </ul>
 
         <h2>Example Usage:</h2>
@@ -272,11 +291,142 @@ POST /api/check-batch
   "phoneNumbers": ["11987654321", "1187654321"],
   "countryCode": "55"  // Optional
 }
+${
+  config.enableCEP
+    ? `
+// CEP validation (GET)
+GET /api/cep/validate-cep/01001000
+
+// CEP validation (POST)
+POST /api/cep/validate-cep
+{
+  "cep": "01001000"
+}`
+    : ""
+}
         </pre>
       </body>
     </html>
   `);
 });
+
+// ===== CEP Validation Functions =====
+
+/**
+ * Validates a Brazilian CEP (ZIP code) by calling the ViaCEP API
+ * @param {string} cep - The CEP to validate (numbers only)
+ * @returns {Promise} - Promise that resolves with the validation result
+ */
+function validateCEP(cep) {
+  return new Promise((resolve, reject) => {
+    // Basic format validation
+    const cleanCep = cep.replace(/[^0-9]/g, "");
+
+    if (cleanCep.length !== 8) {
+      return resolve({
+        isValid: false,
+        message: "CEP must have 8 digits",
+        cep: cleanCep,
+      });
+    }
+
+    // Call the ViaCEP API
+    const url = `https://viacep.com.br/ws/${cleanCep}/json/`;
+
+    https
+      .get(url, (response) => {
+        let data = "";
+
+        // A chunk of data has been received
+        response.on("data", (chunk) => {
+          data += chunk;
+        });
+
+        // The whole response has been received
+        response.on("end", () => {
+          try {
+            const result = JSON.parse(data);
+
+            if (result.erro) {
+              resolve({
+                isValid: false,
+                message: "Invalid CEP",
+                cep: cleanCep,
+              });
+            } else {
+              resolve({
+                isValid: true,
+                message: "Valid CEP",
+                cep: cleanCep,
+                data: result,
+              });
+            }
+          } catch (error) {
+            reject({
+              isValid: false,
+              message: "Error processing response",
+              error: error.message,
+            });
+          }
+        });
+      })
+      .on("error", (error) => {
+        reject({
+          isValid: false,
+          message: "Error calling ViaCEP API",
+          error: error.message,
+        });
+      });
+  });
+}
+
+// CEP API Routes
+if (config.enableCEP) {
+  console.log("CEP validation enabled");
+
+  // CEP health check
+  app.get("/api/cep", (req, res) => {
+    res.json({ message: "CEP Validator API is running" });
+  });
+
+  // CEP validation - GET method
+  app.get("/api/cep/validate-cep/:cep", async (req, res) => {
+    try {
+      const cepValue = req.params.cep;
+      const result = await validateCEP(cepValue);
+      res.json(result);
+    } catch (error) {
+      res.status(500).json({
+        isValid: false,
+        message: "Server error",
+        error: error.message,
+      });
+    }
+  });
+
+  // CEP validation - POST method
+  app.post("/api/cep/validate-cep", async (req, res) => {
+    try {
+      const { cep } = req.body;
+
+      if (!cep) {
+        return res.status(400).json({
+          isValid: false,
+          message: "CEP is required in the request body",
+        });
+      }
+
+      const result = await validateCEP(cep);
+      res.json(result);
+    } catch (error) {
+      res.status(500).json({
+        isValid: false,
+        message: "Server error",
+        error: error.message,
+      });
+    }
+  });
+}
 
 // Start the server
 const server = http.createServer(app);
@@ -284,9 +434,11 @@ const server = http.createServer(app);
 server.listen(config.port, () => {
   console.log(`Server running on port ${config.port}`);
   console.log(`Visit http://localhost:${config.port}/ for documentation`);
+  console.log(`WhatsApp validation: Enabled`);
+  console.log(`CEP validation: ${config.enableCEP ? "Enabled" : "Disabled"}`);
 
   // Initialize WhatsApp client
-  client.initialize().catch(err => {
+  client.initialize().catch((err) => {
     console.error("WhatsApp client initialization error:", err);
   });
 });

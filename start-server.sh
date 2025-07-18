@@ -46,8 +46,10 @@ fi
 export PORT="$PORT"
 export DEFAULT_COUNTRY_CODE="55"
 export MAX_BATCH_SIZE="20"
+export ENABLE_CEP="true"
 
 echo "Starting WhatsApp Number Checker API on port $PORT..."
+echo "CEP validation is enabled"
 echo "Press Ctrl+C to stop the server"
 
 # Run the server
