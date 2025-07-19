@@ -42,10 +42,24 @@ if [ ! -d "node_modules/whatsapp-web.js" ]; then
     npm install
 fi
 
-# Ensure sessions directory exists
+# Ensure authentication directories exist for WhatsApp web client
+if [ ! -d ".wwebjs_auth" ]; then
+    echo "Creating .wwebjs_auth directory for persistent authentication..."
+    mkdir -p .wwebjs_auth
+fi
+
+# Ensure sessions directory exists for our client implementation
 if [ ! -d "sessions" ]; then
     echo "Creating sessions directory for persistent authentication..."
     mkdir -p sessions
+    # Set proper permissions for the sessions directory
+    chmod 755 sessions
+fi
+
+# Make sure any existing session data has correct permissions
+if [ -d "sessions" ]; then
+    echo "Setting proper permissions on sessions directory..."
+    chmod -R 755 sessions
 fi
 
 # Export environment variables

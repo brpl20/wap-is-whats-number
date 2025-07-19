@@ -7,7 +7,7 @@ async function initializeWhatsAppClient() {
   const client = new Client({
     authStrategy: new LocalAuth({
       clientId: "wap-is-whats-number", // Unique identifier for this client
-      dataPath: "./sessions", // This will create the auth folder here
+      dataPath: path.join(__dirname, "./sessions"), // Use absolute path to ensure correct location
     }),
     puppeteer: {
       headless: true,
@@ -19,24 +19,31 @@ async function initializeWhatsAppClient() {
     },
   });
 
+  // Handle QR code generation
   client.on("qr", (qr) => {
     console.log("QR RECEIVED. Scan this with your WhatsApp app:");
     qrcode.generate(qr, { small: true });
   });
 
+  // Handle client ready event
   client.on("ready", () => {
     console.log("WhatsApp client is ready!");
   });
 
+  // Handle authentication
   client.on("authenticated", () => {
     console.log("WhatsApp client authenticated");
   });
 
+  // Handle authentication failures
   client.on("auth_failure", (msg) => {
     console.error("WhatsApp authentication failed:", msg);
   });
 
-  client.initialize();
+  // Initialize client but don't wait for ready event here
+  // We'll handle that in the main file
+  await client.initialize();
+
   return client;
 }
 

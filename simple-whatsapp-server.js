@@ -1,6 +1,4 @@
 const express = require("express");
-const { Client, LocalAuth } = require("whatsapp-web.js");
-const qrcode = require("qrcode-terminal");
 const fs = require("fs");
 const path = require("path");
 const http = require("http");
@@ -33,9 +31,26 @@ const config = {
   enableCEP: process.env.ENABLE_CEP !== "false",
 };
 
-// Initialize WhatsApp client
-console.log("Initializing WhatsApp client...");
-let client; // Will be initialized later
+// Initialize WhatsApp client - will be set later
+let client = null;
+
+// Function to wait for client to be ready
+async function waitForClientReady(whatsappClient) {
+  return new Promise((resolve) => {
+    if (whatsappClient.info) {
+      // Client is already ready
+      console.log("WhatsApp client already authenticated and ready");
+      resolve();
+    } else {
+      // Wait for ready event
+      whatsappClient.on("ready", () => {
+        console.log("WhatsApp client authenticated");
+        console.log("WhatsApp client is ready!");
+        resolve();
+      });
+    }
+  });
+}
 
 // Utility function to format phone numbers
 function formatPhoneNumber(
@@ -402,37 +417,86 @@ if (config.enableCEP) {
   });
 }
 
-// Start the server
-const server = http.createServer(app);
-
-server.listen(config.port, async () => {
-  console.log(`Server running on port ${config.port}`);
-  console.log(`Visit http://localhost:${config.port}/ for documentation`);
-  console.log(`WhatsApp validation: Enabled`);
-  console.log(`CEP validation: ${config.enableCEP ? "Enabled" : "Disabled"}`);
-
-  // Initialize WhatsApp client using the new module with persistent authentication
+// Start the application
+async function startApplication() {
   try {
+    console.log("Initializing WhatsApp client...");
     client = await initializeWhatsAppClient();
-  } catch (err) {
-    console.error("WhatsApp client initialization error:", err);
-  }
-});
+    console.log("WhatsApp client initialized");
 
-// Handle graceful shutdown
-process.on("SIGINT", async () => {
-  console.log("\nShutting down...");
-  try {
-    if (client) {
-      console.log("Closing WhatsApp client...");
-      await client.destroy();
-    }
-    server.close(() => {
-      console.log("Server closed");
-      process.exit(0);
+    // Wait for client to be ready before starting server
+    await waitForClientReady(client);
+
+    // Create and start the server
+    const server = http.createServer(app);
+
+    server.listen(config.port, () => {
+      console.log(`Server running on port ${config.port}`);
+      console.log(`Visit http://localhost:${config.port}/ for documentation`);
+      console.log(`WhatsApp validation: Enabled`);
+      console.log(
+        `CEP validation: ${config.enableCEP ? "Enabled" : "Disabled"}`,
+      );
+    });
+
+    // Handle graceful shutdown
+    process.on("SIGINT", async () => {
+      console.log("\nSIGINT received. Shutting down gracefully...");
+      try {
+        if (client) {
+          console.log("Closing WhatsApp client...");
+          await client.destroy();
+        }
+        server.close(() => {
+          console.log("Server closed");
+          process.exit(0);
+        });
+      } catch (error) {
+        console.error("Error during shutdown:", error);
+        process.exit(1);
+      }
+    });
+
+    // Handle SIGTERM
+    process.on("SIGTERM", async () => {
+      console.log("\nSIGTERM received. Shutting down gracefully...");
+      try {
+        if (client) {
+          console.log("Closing WhatsApp client...");
+          await client.destroy();
+        }
+        server.close(() => {
+          console.log("Server closed");
+          process.exit(0);
+        });
+      } catch (error) {
+        console.error("Error during shutdown:", error);
+        process.exit(1);
+      }
     });
   } catch (error) {
-    console.error("Error during shutdown:", error);
+    console.error("Failed to start application:", error);
     process.exit(1);
   }
+}
+
+// Start the application
+startApplication();
+
+// Handle uncaught exceptions
+process.on("uncaughtException", (error) => {
+  console.error("Uncaught Exception:", error);
+  if (client) {
+    client.destroy().catch(console.error);
+  }
+  process.exit(1);
+});
+
+// Handle unhandled promise rejections
+process.on("unhandledRejection", (reason, promise) => {
+  console.error("Unhandled Rejection at:", promise, "reason:", reason);
+  if (client) {
+    client.destroy().catch(console.error);
+  }
+  process.exit(1);
 });
