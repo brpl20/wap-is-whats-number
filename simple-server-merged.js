@@ -3,7 +3,53 @@ const fs = require("fs");
 const path = require("path");
 const http = require("http");
 const https = require("https");
-const { initializeWhatsAppClient } = require("./client");
+const { Client, LocalAuth } = require("whatsapp-web.js");
+const qrcode = require("qrcode-terminal");
+
+// Global client variable
+let client = null;
+
+// Initialize WhatsApp Client function (merged from client.js)
+async function initializeWhatsAppClient() {
+  const whatsappClient = new Client({
+    authStrategy: new LocalAuth({
+      clientId: "wap-is-whats-number", // Unique identifier for this client
+      dataPath: path.join(__dirname, "./sessions"), // Use absolute path to ensure correct location
+    }),
+    puppeteer: {
+      headless: true,
+      args: [
+        "--no-sandbox",
+        "--disable-setuid-sandbox",
+        "--disable-dev-shm-usage",
+      ],
+    },
+  });
+
+  // Handle QR code generation
+  whatsappClient.on("qr", (qr) => {
+    console.log("QR RECEIVED. Scan this with your WhatsApp app:");
+    qrcode.generate(qr, { small: true });
+  });
+
+  // Handle client ready event
+  whatsappClient.on("ready", () => {
+    console.log("WhatsApp client is ready!");
+  });
+
+  // Handle authentication
+  whatsappClient.on("authenticated", () => {
+    console.log("WhatsApp client authenticated");
+  });
+
+  // Handle authentication failures
+  whatsappClient.on("auth_failure", (msg) => {
+    console.error("WhatsApp authentication failed:", msg);
+  });
+
+  whatsappClient.initialize();
+  return whatsappClient;
+}
 
 // Initialize Express app
 const app = express();
@@ -31,14 +77,20 @@ const config = {
   enableCEP: process.env.ENABLE_CEP !== "false",
 };
 
-// Function to wait for client to be ready
-async function waitForClientReady(whatsappClient) {
+// Function to wait for client to be ready (synchronous approach)
+function waitForClientReady(whatsappClient) {
   return new Promise((resolve) => {
-    whatsappClient.on("ready", () => {
-      console.log("WhatsApp client authenticated");
-      console.log("WhatsApp client is ready!");
+    if (whatsappClient.info) {
+      // Client is already ready
       resolve();
-    });
+    } else {
+      // Wait for ready event
+      whatsappClient.on("ready", () => {
+        console.log("WhatsApp client authenticated");
+        console.log("WhatsApp client is ready!");
+        resolve();
+      });
+    }
   });
 }
 
@@ -201,8 +253,10 @@ app.get("/api/status", async (req, res) => {
     res.json({
       success: true,
       status: {
-        client: client.getState() || "INITIALIZING",
-        ready: !!client.info,
+        client: client
+          ? client.getState() || "INITIALIZING"
+          : "NOT_INITIALIZED",
+        ready: !!(client && client.info),
       },
       timestamp: new Date().toISOString(),
     });
@@ -407,17 +461,21 @@ if (config.enableCEP) {
   });
 }
 
-// Start the application
+// Start the application (FIXED - single function with proper synchronous flow)
 async function startApplication() {
   try {
     console.log("Initializing WhatsApp client...");
+
+    // Initialize the client
     client = await initializeWhatsAppClient();
     console.log("WhatsApp client initialized");
 
-    // Wait for client to be ready before starting server
+    // Wait synchronously for client to be ready before starting server
+    console.log("Waiting for WhatsApp client to be ready...");
     await waitForClientReady(client);
+    console.log("WhatsApp client is now ready!");
 
-    // Create and start the server
+    // Create and start the server only after client is ready
     const server = http.createServer(app);
 
     server.listen(config.port, () => {
@@ -430,8 +488,8 @@ async function startApplication() {
     });
 
     // Handle graceful shutdown
-    process.on("SIGINT", async () => {
-      console.log("\nSIGINT received. Shutting down gracefully...");
+    const gracefulShutdown = async () => {
+      console.log("\nShutdown signal received. Shutting down gracefully...");
       try {
         if (client) {
           console.log("Closing WhatsApp client...");
@@ -445,65 +503,51 @@ async function startApplication() {
         console.error("Error during shutdown:", error);
         process.exit(1);
       }
-    });
+    };
+
+    // Handle SIGINT (Ctrl+C)
+    process.on("SIGINT", gracefulShutdown);
 
     // Handle SIGTERM
-    process.on("SIGTERM", async () => {
-      console.log("\nSIGTERM received. Shutting down gracefully...");
-      try {
-        if (client) {
-          console.log("Closing WhatsApp client...");
-          await client.destroy();
-        }
-        server.close(() => {
-          console.log("Server closed");
-          process.exit(0);
-        });
-      } catch (error) {
-        console.error("Error during shutdown:", error);
-        process.exit(1);
-      }
-    });
+    process.on("SIGTERM", gracefulShutdown);
   } catch (error) {
     console.error("Failed to start application:", error);
-    process.exit(1);
-  }
-}
-
-// Start the application
-async function startApplication() {
-  try {
-    console.log("Initializing WhatsApp client...");
-    client = await initializeWhatsAppClient();
-    console.log("WhatsApp client initialized");
-
-    // Wait for client to be ready before starting server
-    await waitForClientReady(client);
-  } catch (error) {
-    console.error("Error starting application:", error);
     if (client) {
-      client.destroy().catch(console.error);
+      try {
+        await client.destroy();
+      } catch (destroyError) {
+        console.error("Error destroying client:", destroyError);
+      }
     }
     process.exit(1);
   }
 }
 
+// Start the application
 startApplication();
 
 // Handle uncaught exceptions
-process.on("uncaughtException", (error) => {
+process.on("uncaughtException", async (error) => {
   console.error("Uncaught Exception:", error);
   if (client) {
-    client.destroy().catch(console.error);
+    try {
+      await client.destroy();
+    } catch (destroyError) {
+      console.error("Error destroying client:", destroyError);
+    }
   }
   process.exit(1);
 });
 
 // Handle unhandled promise rejections
-process.on("unhandledRejection", (reason, promise) => {
+process.on("unhandledRejection", async (reason, promise) => {
   console.error("Unhandled Rejection at:", promise, "reason:", reason);
   if (client) {
-    client.destroy().catch(console.error);
+    try {
+      await client.destroy();
+    } catch (destroyError) {
+      console.error("Error destroying client:", destroyError);
+    }
   }
   process.exit(1);
 });

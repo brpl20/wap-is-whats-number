@@ -40,9 +40,7 @@ async function initializeWhatsAppClient() {
     console.error("WhatsApp authentication failed:", msg);
   });
 
-  // Initialize client but don't wait for ready event here
-  // We'll handle that in the main file
-  await client.initialize();
+  client.initialize();
 
   return client;
 }
