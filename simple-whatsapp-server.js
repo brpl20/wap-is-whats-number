@@ -37,18 +37,11 @@ let client = null;
 // Function to wait for client to be ready
 async function waitForClientReady(whatsappClient) {
   return new Promise((resolve) => {
-    if (whatsappClient.info) {
-      // Client is already ready
-      console.log("WhatsApp client already authenticated and ready");
+    whatsappClient.on("ready", () => {
+      console.log("WhatsApp client authenticated");
+      console.log("WhatsApp client is ready!");
       resolve();
-    } else {
-      // Wait for ready event
-      whatsappClient.on("ready", () => {
-        console.log("WhatsApp client authenticated");
-        console.log("WhatsApp client is ready!");
-        resolve();
-      });
-    }
+    });
   });
 }
 
@@ -481,6 +474,23 @@ async function startApplication() {
 }
 
 // Start the application
+async function startApplication() {
+  try {
+    console.log("Initializing WhatsApp client...");
+    client = await initializeWhatsAppClient();
+    console.log("WhatsApp client initialized");
+
+    // Wait for client to be ready before starting server
+    await waitForClientReady(client);
+  } catch (error) {
+    console.error("Error starting application:", error);
+    if (client) {
+      client.destroy().catch(console.error);
+    }
+    process.exit(1);
+  }
+}
+
 startApplication();
 
 // Handle uncaught exceptions
