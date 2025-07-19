@@ -1,10 +1,11 @@
 const express = require("express");
-const { Client } = require("whatsapp-web.js");
+const { Client, LocalAuth } = require("whatsapp-web.js");
 const qrcode = require("qrcode-terminal");
 const fs = require("fs");
 const path = require("path");
 const http = require("http");
 const https = require("https");
+const { initializeWhatsAppClient } = require("./client");
 
 // Initialize Express app
 const app = express();
@@ -34,34 +35,7 @@ const config = {
 
 // Initialize WhatsApp client
 console.log("Initializing WhatsApp client...");
-const client = new Client({
-  puppeteer: {
-    headless: true,
-    args: [
-      "--no-sandbox",
-      "--disable-setuid-sandbox",
-      "--disable-dev-shm-usage",
-    ],
-  },
-});
-
-// QR code handling
-client.on("qr", (qr) => {
-  console.log("QR RECEIVED. Scan this with your WhatsApp app:");
-  qrcode.generate(qr, { small: true });
-});
-
-client.on("ready", () => {
-  console.log("WhatsApp client is ready!");
-});
-
-client.on("authenticated", () => {
-  console.log("WhatsApp client authenticated");
-});
-
-client.on("auth_failure", (msg) => {
-  console.error("WhatsApp authentication failed:", msg);
-});
+let client; // Will be initialized later
 
 // Utility function to format phone numbers
 function formatPhoneNumber(
@@ -431,16 +405,18 @@ if (config.enableCEP) {
 // Start the server
 const server = http.createServer(app);
 
-server.listen(config.port, () => {
+server.listen(config.port, async () => {
   console.log(`Server running on port ${config.port}`);
   console.log(`Visit http://localhost:${config.port}/ for documentation`);
   console.log(`WhatsApp validation: Enabled`);
   console.log(`CEP validation: ${config.enableCEP ? "Enabled" : "Disabled"}`);
 
-  // Initialize WhatsApp client
-  client.initialize().catch((err) => {
+  // Initialize WhatsApp client using the new module with persistent authentication
+  try {
+    client = await initializeWhatsAppClient();
+  } catch (err) {
     console.error("WhatsApp client initialization error:", err);
-  });
+  }
 });
 
 // Handle graceful shutdown

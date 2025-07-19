@@ -42,6 +42,12 @@ if [ ! -d "node_modules/whatsapp-web.js" ]; then
     npm install
 fi
 
+# Ensure sessions directory exists
+if [ ! -d "sessions" ]; then
+    echo "Creating sessions directory for persistent authentication..."
+    mkdir -p sessions
+fi
+
 # Export environment variables
 export PORT="$PORT"
 export DEFAULT_COUNTRY_CODE="55"
