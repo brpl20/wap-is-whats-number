@@ -25,7 +25,7 @@ app.use((req, res, next) => {
 
 // Simple configuration
 const config = {
-  port: process.env.PORT || 3000,
+  port: process.env.PORT || 3003,
   defaultCountryCode: process.env.DEFAULT_COUNTRY_CODE || "55",
   maxBatchSize: parseInt(process.env.MAX_BATCH_SIZE || "20", 10),
   enableCEP: process.env.ENABLE_CEP !== "false",

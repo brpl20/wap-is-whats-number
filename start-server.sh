@@ -16,7 +16,7 @@ if ! command -v node &> /dev/null; then
 fi
 
 # Set default port
-PORT=${PORT:-3000}
+PORT=${PORT:-3003}
 
 # Process command line arguments
 for arg in "$@"
