@@ -1,37 +1,82 @@
 {
   "name": "wap-is-whats-number",
-  "version": "1.0.0",
-  "description": "API service that includes WhatsApp number validation and Brazilian CEP validation",
-  "main": "server.js",
+  "version": "2.0.0",
+  "description": "Production-ready API service for WhatsApp number validation and Brazilian CEP validation with enhanced security and monitoring",
+  "main": "app.js",
   "scripts": {
-    "start": "node server.js",
+    "start": "node app.js",
+    "dev": "nodemon app.js",
     "test": "node test-whatsapp-api.js",
-    "dev": "nodemon server.js",
-    "start:whatsapp": "node wap-is-whats-number-server.js",
-    "start:cep": "node cep-checker.js",
-    "start:server": "bash start.sh",
-    "start:cep-only": "bash start.sh --no-whatsapp"
+    "pm2:start": "pm2 start ecosystem.config.js",
+    "pm2:stop": "pm2 stop whatsapp-api",
+    "pm2:restart": "pm2 restart whatsapp-api",
+    "pm2:reload": "pm2 reload whatsapp-api",
+    "pm2:logs": "pm2 logs whatsapp-api",
+    "pm2:status": "pm2 status",
+    "pm2:monit": "pm2 monit",
+    "docker:build": "docker build -t whatsapp-api .",
+    "docker:run": "docker run -p 3003:3003 --name whatsapp-api-container whatsapp-api",
+    "docker:compose": "docker-compose up -d",
+    "docker:compose:down": "docker-compose down",
+    "setup:logs": "mkdir -p logs",
+    "setup:sessions": "mkdir -p sessions",
+    "setup": "npm run setup:logs && npm run setup:sessions",
+    "backup:sessions": "tar -czf sessions-backup-$(date +%Y%m%d-%H%M%S).tar.gz sessions/",
+    "clean": "rm -rf node_modules package-lock.json && npm install",
+    "health": "curl -f http://localhost:3003/health || exit 1",
+    "status": "curl -s http://localhost:3003/api/status | jq ."
   },
   "dependencies": {
     "express": "^4.21.2",
-    "express-rate-limit": "^7.5.1",
-    "puppeteer": "^24.14.0",
+    "whatsapp-web.js": "^1.23.0",
     "qrcode-terminal": "^0.12.0",
-    "whatsapp-web.js": "^1.23.0"
+    "qrcode": "^1.5.3",
+    "puppeteer": "^24.14.0"
   },
   "devDependencies": {
-    "axios": "^1.6.2",
-    "nodemon": "^3.0.1"
+    "nodemon": "^3.0.1",
+    "axios": "^1.6.2"
+  },
+  "optionalDependencies": {
+    "pm2": "^5.3.0"
   },
   "engines": {
-    "node": ">=14.0.0"
+    "node": ">=16.0.0",
+    "npm": ">=8.0.0"
   },
   "keywords": [
     "whatsapp",
     "validation",
     "api",
-    "phone-number"
+    "phone-number",
+    "cep",
+    "brazil",
+    "production",
+    "express",
+    "puppeteer",
+    "rest-api"
   ],
-  "author": "",
-  "license": "ISC"
+  "author": "Your Name <your.email@example.com>",
+  "license": "ISC",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/yourusername/wap-is-whats-number.git"
+  },
+  "bugs": {
+    "url": "https://github.com/yourusername/wap-is-whats-number/issues"
+  },
+  "homepage": "https://github.com/yourusername/wap-is-whats-number#readme",
+  "config": {
+    "port": "3003",
+    "host": "0.0.0.0"
+  },
+  "os": [
+    "linux",
+    "darwin",
+    "win32"
+  ],
+  "cpu": [
+    "x64",
+    "arm64"
+  ]
 }
