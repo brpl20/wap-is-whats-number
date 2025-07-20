@@ -1,0 +1,18 @@
+version: '3.8'
+services:
+  whatsapp-api:
+    build: .
+    ports:
+      - "3003:3003"
+    environment:
+      - NODE_ENV=production
+      - PORT=3003
+      - HOST=0.0.0.0
+      - DEFAULT_COUNTRY_CODE=55
+      - MAX_BATCH_SIZE=20
+      - ENABLE_CEP=true
+      - API_KEY=your-secret-api-key-here
+    volumes:
+      - ./sessions:/app/sessions
+      - ./logs:/app/logs
+    restart: unless-stopped

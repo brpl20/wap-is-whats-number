@@ -1,0 +1,16 @@
+[Unit]
+Description=WhatsApp API Service
+After=network.target
+
+[Service]
+Type=simple
+User=your-username
+WorkingDirectory=/home/brpl/wap-is-whats-number
+ExecStart=/usr/bin/node app.js
+Restart=always
+RestartSec=10
+Environment=NODE_ENV=production
+Environment=PORT=3003
+
+[Install]
+WantedBy=multi-user.target
