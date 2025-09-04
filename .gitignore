@@ -1,5 +1,41 @@
+# Dependencies
 /node_modules/
+package-lock.json
+
+# WhatsApp session data
 .wwebjs_auth
 .wwebjs_cache/
-.DS_Store
+sessions/
+src/sessions/
+
+# Environment files
 .env
+.env.local
+.env.*.local
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Logs
+logs/
+*.log
+npm-debug.log*
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Temporary files
+*.tmp
+*.temp
+.tmp/
+.cache/
+
+# PM2
+.pm2/
+pids/
+*.pid

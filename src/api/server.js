@@ -71,11 +71,13 @@ const server = http.createServer(app);
 // Start server function
 function startServer() {
   const port = config.port;
+  const host = '0.0.0.0'; // Listen on all interfaces
   
-  server.listen(port, () => {
-    console.log(`🚀 Unified API Server running on port ${port}`);
-    console.log(`📱 WhatsApp API: http://localhost:${port}/api/wap`);
-    console.log(`📍 CEP API: http://localhost:${port}/api/cep`);
+  server.listen(port, host, () => {
+    console.log(`🚀 Unified API Server running on ${host}:${port}`);
+    console.log(`📱 WhatsApp API: http://${host}:${port}/api/wap`);
+    console.log(`📍 CEP API: http://${host}:${port}/api/cep`);
+    console.log(`📡 Server is accessible from other computers on the network`);
   });
 }
 
