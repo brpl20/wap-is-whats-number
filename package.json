@@ -2,10 +2,10 @@
   "name": "wap-is-whats-number",
   "version": "2.0.0",
   "description": "Production-ready API service for WhatsApp number validation and Brazilian CEP validation with enhanced security and monitoring",
-  "main": "app.js",
+  "main": "src/api/index.js",
   "scripts": {
-    "start": "node app.js",
-    "dev": "nodemon app.js",
+    "start": "node src/api/index.js",
+    "dev": "nodemon src/api/index.js",
     "test": "node test-whatsapp-api.js",
     "pm2:start": "pm2 start ecosystem.config.js",
     "pm2:stop": "pm2 stop whatsapp-api",
@@ -28,6 +28,7 @@
   },
   "dependencies": {
     "cors": "^2.8.5",
+    "dotenv": "^17.2.2",
     "express": "^4.21.2",
     "puppeteer": "^24.14.0",
     "qrcode": "^1.5.3",
